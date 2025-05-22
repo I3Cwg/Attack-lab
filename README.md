@@ -1,19 +1,26 @@
+
+![alt text](image-25.png)
+
 ## Information about machines in the model
 
 | Machine | Interface | Network | IP Address |
 |-----|-----------|------|------------|
-| **Router** | eth0 | NAT | 192.168.100.129 |
+| **Router** | eth0 | NAT | 192.168.100.131 |
 | | eth1 | VMnet2 (Host-Only) | 10.81.1.1 |
-| | eth2 | VMnet3 (Host-Only) | 192.168.1.1 |
-| **Attacker** | eth0 | VMnet2 (Host-Only) | 10.81.1.129 |
-| **Snort** | eth0 | NAT | 192.168.100.128 |
-| | eth1 | VMnet2 (Host-Only) | (no static IP) |
-| | eth2 | VMnet3 (Host-Only) | (no static IP) |
-| **Victim** | eth0 | VMnet3 (Host-Only) | 192.168.1.200 |
+| | eth2 | VMnet3 (Host-Only) | 172.16.5.1 |
+| **Attacker** | eth0 | VMnet2 (Host-Only) | 10.81.1.128 |
+| **Snort** | eth0 | NAT (optional) | 192.168.100.129 |
+| | eth1 | VMnet3 (Host-Only) | (no static IP) |
+| | eth2 | VMnet4 (Host-Only) | 172.16.5.20 |
+| **Victim** | eth0 | VMnet4 (Host-Only) | 172.16.5.200 |
+| | eth1 | NAT (optional) | 192.168.100.132 |
+| **Wazuh-Server** | eth0 | NAT (optional) | 192.168.100.130 |
+| | eth1 | VMnet4 (Host-Only) | 172.16.5.10 |
+
 
 ## 1. VMnet Configuration
 
-![alt text](image-1.png)
+![alt text](image-10.png)
 
 ## 2. Configuring IP addresses for interfaces
 
@@ -44,10 +51,10 @@ network:
     eth2:
       dhcp4: no
       addresses:
-        - 192.168.1.1/24
+        - 172.16.5.1/24
       nameservers:
         addresses:
-          - 192.168.1.1
+          - 172.16.5.1
           - 8.8.8.8
 ```
 
@@ -59,7 +66,7 @@ sudo netplan apply
 Check configuration:
 
 ```bash
-vagrant@Router:~$ ip add show
+vagrant@Router:~$ ip a
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -70,8 +77,8 @@ vagrant@Router:~$ ip add show
     link/ether 00:0c:29:36:2d:1f brd ff:ff:ff:ff:ff:ff
     altname enp11s0
     altname ens192
-    inet 192.168.100.129/24 metric 100 brd 192.168.100.255 scope global dynamic eth0
-       valid_lft 1610sec preferred_lft 1610sec
+    inet 192.168.100.131/24 metric 100 brd 192.168.100.255 scope global dynamic eth0
+       valid_lft 1746sec preferred_lft 1746sec
     inet6 fe80::20c:29ff:fe36:2d1f/64 scope link
        valid_lft forever preferred_lft forever
 3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
@@ -86,7 +93,7 @@ vagrant@Router:~$ ip add show
     link/ether 00:0c:29:36:2d:33 brd ff:ff:ff:ff:ff:ff
     altname enp2s2
     altname ens34
-    inet 192.168.1.1/24 brd 192.168.1.255 scope global eth2
+    inet 172.16.5.1/24 brd 172.16.5.255 scope global eth2
        valid_lft forever preferred_lft forever
     inet6 fe80::20c:29ff:fe36:2d33/64 scope link
        valid_lft forever preferred_lft forever
@@ -94,7 +101,8 @@ vagrant@Router:~$ ip add show
 
 ### Attacker
 ```bash
-└─$ ip add show      
+┌──(vagrant㉿Attacker)-[~/Desktop]
+└─$ ip a
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -103,10 +111,22 @@ vagrant@Router:~$ ip add show
        valid_lft forever preferred_lft forever
 2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
     link/ether 00:0c:29:4c:60:a5 brd ff:ff:ff:ff:ff:ff
-    inet 10.81.1.129/24 brd 10.81.1.255 scope global dynamic noprefixroute eth0
-       valid_lft 916sec preferred_lft 691sec
+    inet 10.81.1.128/24 brd 10.81.1.255 scope global dynamic noprefixroute eth0
+       valid_lft 1772sec preferred_lft 1547sec
     inet6 fe80::cd6c:f1ea:f3c9:6c08/64 scope link 
        valid_lft forever preferred_lft forever
+
+```
+
+```bash
+sudo ip route add default via 10.81.1.1
+```
+Check configuration:
+```bash
+┌──(vagrant㉿Attacker)-[~/Desktop]
+└─$ ip route                                        
+default via 10.81.1.1 dev eth0 
+10.81.1.0/24 dev eth0 proto dhcp scope link src 10.81.1.128 metric 1002
 ```
 
 ### Snort
@@ -118,7 +138,7 @@ sudo ip link set ens34 up
 
 Note: Snort IDS/IPS is configured without static IP addresses on interfaces eth1 and eth2 to work in transparent bridge mode.
 ```bash
-vagrant@Snort:/etc/netplan$ ip a
+vagrant@Snort:~$ ip a
 1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
     inet 127.0.0.1/8 scope host lo
@@ -129,28 +149,86 @@ vagrant@Snort:/etc/netplan$ ip a
     link/ether 00:0c:29:27:a4:8c brd ff:ff:ff:ff:ff:ff
     altname enp11s0
     altname ens192
-    inet 192.168.100.128/24 metric 100 brd 192.168.100.255 scope global dynamic eth0
-       valid_lft 953sec preferred_lft 953sec
+    inet 192.168.100.129/24 metric 100 brd 192.168.100.255 scope global dynamic eth0
+       valid_lft 1336sec preferred_lft 1336sec
     inet6 fe80::20c:29ff:fe27:a48c/64 scope link
        valid_lft forever preferred_lft forever
-3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+3: eth1: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
     link/ether 00:0c:29:27:a4:96 brd ff:ff:ff:ff:ff:ff
     altname enp2s1
     altname ens33
-    inet6 fe80::20c:29ff:fe27:a496/64 scope link
-       valid_lft forever preferred_lft forever
-4: eth2: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+4: eth2: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
     link/ether 00:0c:29:27:a4:a0 brd ff:ff:ff:ff:ff:ff
     altname enp2s2
     altname ens34
-    inet6 fe80::20c:29ff:fe27:a4a0/64 scope link
-       valid_lft forever preferred_lft forever
 ```
 
 ### Victim
-![alt text](image-2.png)
+![alt text](image-15.png)
 
-![alt text](image-3.png)
+![alt text](image-16.png)
+
+### Wazuh-Server
+```bash
+root@Wazuh-Server:/etc/netplan# nano 50-cloud-init.yaml
+```
+Configuration content:
+```yaml
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: no
+      addresses:
+        - 172.16.5.10/24
+      nameservers:
+        addresses:
+          - 172.16.5.1
+          - 8.8.8.8
+#      routes:
+#       - to: default
+#          via: 172.16.5.1
+```
+Apply configuration:
+```bash
+sudo netplan apply
+```
+Check configuration:
+```bash
+vagrant@Wazuh-Server:~$ ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host noprefixroute
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 00:0c:29:53:ab:63 brd ff:ff:ff:ff:ff:ff
+    altname enp11s0
+    altname ens192
+    inet 192.168.100.130/24 metric 100 brd 192.168.100.255 scope global dynamic eth0
+       valid_lft 1780sec preferred_lft 1780sec
+    inet6 fe80::20c:29ff:fe53:ab63/64 scope link
+       valid_lft forever preferred_lft forever
+3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 00:0c:29:53:ab:6d brd ff:ff:ff:ff:ff:ff
+    altname enp2s1
+    altname ens33
+    inet 172.16.5.10/24 brd 172.16.5.255 scope global eth1
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fe53:ab6d/64 scope link
+       valid_lft forever preferred_lft forever
+```
+**Note:** The Wazuh-Server is configured with a static IP address on the `eth1` interface, which connects directly to the Victim machine and other internal systems in the LAN. The `eth0` interface (NAT) is only used for faster internet access and to allow external machines to access the Wazuh dashboard.
+
+Therefore, after the server boots, since there is no default route set via `eth1`, you need to run the following command to add the default gateway:
+```bash
+sudo ip route add default via 172.16.5.1 dev eth1
+```
+This command adds a default route, telling the system to send all traffic destined outside the local network through the gateway `172.16.5.1` on interface `eth1`.
+
+
+
 
 ## 3. Configuring NAT outbound for Router
 
@@ -212,7 +290,7 @@ sudo apt update
 sudo apt install snort
 ```
 
-Address range for the local network is '192.168.1.0/24'
+Address range for the local network is '172.16.5.0/24'
 
 ```bash
 sudo snort --daq-list
@@ -239,43 +317,110 @@ Start Snort in IPS mode:
 sudo snort -c /etc/snort/local-snort.conf -Q -i ens33:ens34
 ```
 
-## **4. Check connection**
+## 5. Configure Wazuh-Server
 
-- Attacker connects to network through router
-![alt text](image-4.png)
+We will assign an IP address to the `ens34` interface of the Snort machine so it can send logs to the Wazuh-Server.
 
-- Attacker can ping the Victim
-![alt text](image-5.png)
-
-Victim can connect to the internet through Router
-![alt text](image-6.png)
-
-- Snort records ICMP packets passing through the network
 ```bash
-vagrant@Snort:/etc/netplan$ cat /var/log/snort/alert
-[**] [1:1000001:1] Test ICMP Packet [**]
-[Priority: 0]
-05/19-08:25:34.487492 192.168.1.200 -> 10.81.1.129
-ICMP TTL:128 TOS:0x0 ID:228 IpLen:20 DgmLen:60
-Type:8  Code:0  ID:1   Seq:8  ECHO
+sudo nano /etc/netplan/50-cloud-init.yaml
 
-[**] [1:1000001:1] Test ICMP Packet [**]
-[Priority: 0]
-05/19-08:25:34.488741 10.81.1.129 -> 192.168.1.200
-ICMP TTL:63 TOS:0x0 ID:7899 IpLen:20 DgmLen:60
-Type:0  Code:0  ID:1  Seq:8  ECHO REPLY
+network:
+  version: 2
+  ethernets:
+    ens33:
+      dhcp4: no
+      addresses:
+        - 172.16.5.10/24
+      nameservers:
+        addresses:
+          - 172.16.5.1
+          - 8.8.8.8
+```
 
-[**] [1:1000001:1] Test ICMP Packet [**]
+Install Wazuh agent in Snort:
+![alt text](image-13.png)
 
-[**] [1:1000001:1] Test ICMP Packet [**]
-[Priority: 0]
-05/19-08:25:41.379023 192.168.1.200 -> 142.250.196.206
-ICMP TTL:128 TOS:0x0 ID:238 IpLen:20 DgmLen:60
-Type:8  Code:0  ID:1   Seq:13  ECHO
+![alt text](image-14.png)
 
-[**] [1:1000001:1] Test ICMP Packet [**]
-[Priority: 0]
-05/19-08:25:41.669911 142.250.196.206 -> 192.168.1.200
-ICMP TTL:127 TOS:0x0 ID:1454 IpLen:20 DgmLen:60
-Type:0  Code:0  ID:1  Seq:13  ECHO REPLY
+Cau hinh lai wazuh-agent:
+```bash
+sudo nano /var/ossec/etc/ossec.conf
+```
+Find the following line:
+```xml
+<localfile>
+  <log_format>snort</log_format>   <!-- dòng lỗi -->
+  <location>/var/log/snort/alert</location>
+</localfile>
+```
+Replace it with:
+```xml
+<localfile>
+  <log_format>syslog</log_format>
+  <location>/var/log/snort/alert</location>
+</localfile>
+``` 
+
+Restart Wazuh agent:
+```bash
+sudo systemctl restart wazuh-agent
+```
+
+check status:
+```bash
+vagrant@Snort:~$ systemctl status wazuh-agent
+● wazuh-agent.service - Wazuh agent
+     Loaded: loaded (/usr/lib/systemd/system/wazuh-agent.service; enabled; preset: enabled)
+     Active: active (running) since Wed 2025-05-21 03:59:28 UTC; 4min 1s ago
+    Process: 3450 ExecStart=/usr/bin/env /var/ossec/bin/wazuh-control start (code=exited, status=0/SUCCESS)
+      Tasks: 28 (limit: 2271)
+     Memory: 19.1M (peak: 21.1M)
+        CPU: 766ms
+     CGroup: /system.slice/wazuh-agent.service
+             ├─3473 /var/ossec/bin/wazuh-execd
+             ├─3483 /var/ossec/bin/wazuh-agentd
+             ├─3496 /var/ossec/bin/wazuh-syscheckd
+             ├─3509 /var/ossec/bin/wazuh-logcollector
+             └─3523 /var/ossec/bin/wazuh-modulesd
+
+May 21 03:59:23 Snort systemd[1]: Starting wazuh-agent.service - Wazuh agent...
+May 21 03:59:23 Snort env[3450]: Starting Wazuh v4.11.2...
+May 21 03:59:24 Snort env[3450]: Started wazuh-execd...
+May 21 03:59:25 Snort env[3450]: Started wazuh-agentd...
+May 21 03:59:26 Snort env[3450]: Started wazuh-syscheckd...
+May 21 03:59:26 Snort env[3450]: Started wazuh-logcollector...
+May 21 03:59:26 Snort env[3450]: Started wazuh-modulesd...
+May 21 03:59:28 Snort env[3450]: Completed.
+May 21 03:59:28 Snort systemd[1]: Started wazuh-agent.service - Wazuh agent.
+```
+
+Install Wazuh-agent in Victim:
+![alt text](image-17.png)
+
+![alt text](image-18.png)
+
+![alt text](image-19.png)
+
+![alt text](image-21.png)
+
+## **6. Check connection**
+
+Configuration of the firewall on the Victim machine to allow ICMPv4 traffic:
+```bash
+New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Protocol ICMPv4 -IcmpType 8 -Direction Inbound -Action Allow
+```
+
+- Attacker can ping 2 interfaces of Router
+![alt text](image-22.png)
+
+
+- Attacker connects to network through router, ping the victim
+![alt text](image-23.png)
+
+
+- Victim can connect to the internet through Router
+![alt text](image-16.png)
+
+- Check log in Wazuh-Server
+![alt text](image-24.png)
 ```
