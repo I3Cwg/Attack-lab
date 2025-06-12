@@ -1,7 +1,7 @@
 
-![alt text](image-26.png)
+![alt text](/assets/image-26.png)
 
-## Information about machines in the model
+## Information about machines in the diagram
 
 | Machine | Interface | Network | IP Address |
 |-----|-----------|------|------------|
@@ -20,7 +20,7 @@
 
 ## 1. VMnet Configuration
 
-![alt text](image-10.png)
+![alt text](/assets/image-10.png)
 
 ## 2. Configuring IP addresses for interfaces
 
@@ -164,9 +164,9 @@ vagrant@Snort:~$ ip a
 ```
 
 ### Victim
-![alt text](image-15.png)
+![alt text](/assets/image-15.png)
 
-![alt text](image-16.png)
+![alt text](/assets/image-16.png)
 
 ### Wazuh-Server
 ```bash
@@ -336,9 +336,9 @@ network:
 ```
 
 Install Wazuh agent in Snort:
-![alt text](image-13.png)
+![alt text](/assets/image-13.png)
 
-![alt text](image-14.png)
+![alt text](/assets/image-14.png)
 
 Cau hinh lai wazuh-agent:
 ```bash
@@ -393,13 +393,13 @@ May 21 03:59:28 Snort systemd[1]: Started wazuh-agent.service - Wazuh agent.
 ```
 
 Install Wazuh-agent in Victim:
-![alt text](image-17.png)
+![alt text](/assets/image-17.png)
 
-![alt text](image-18.png)
+![alt text](/assets/image-18.png)
 
-![alt text](image-19.png)
+![alt text](/assets/image-19.png)
 
-![alt text](image-21.png)
+![alt text](/assets/image-21.png)
 
 ## **6. Check connection**
 
@@ -409,18 +409,18 @@ New-NetFirewallRule -DisplayName "Allow ICMPv4-In" -Protocol ICMPv4 -IcmpType 8 
 ```
 
 - Attacker can ping 2 interfaces of Router
-![alt text](image-22.png)
+![alt text](/assets/image-22.png)
 
 
 - Attacker connects to network through router, ping the victim
-![alt text](image-23.png)
+![alt text](/assets/image-23.png)
 
 
 - Victim can connect to the internet through Router
-![alt text](image-16.png)
+![alt text](/assets/image-16.png)
 
 - Check log in Wazuh-Server
-![alt text](image-24.png)
+![alt text](/assets/image-24.png)
 
 ##
 
@@ -431,7 +431,7 @@ alert icmp any any -> any any (msg:"ICMP Ping Detected"; itype:8; dsize:0; sid:1
 ```
 
 check log in Wazuh-Server:
-![alt text](image-2.png)
+![alt text](/assets/image-2.png)
 
 ### Reverse shell attack
 
@@ -461,10 +461,10 @@ nc -lvnp 4444
 ```
 
 Check the connection in the Attacker machine:
-![alt text](image-7.png)
+![alt text](/assets/image-7.png)
 
 Check the log in Wazuh-Server:
-![alt text](image-25.png)
+![alt text](/assets/image-25.png)
 
 ### Port scanning attack
 In Snort, we will create a rule to detect port scanning attacks. The rule will look for patterns in the traffic that indicate a port scan.
@@ -478,7 +478,7 @@ To simulate a port scanning attack, we will use `nmap` to scan the Victim machin
 nmap -sS -p- 172.16.5.200
 ```
 2. Check the log in Wazuh-Server:
-![alt text](image-27.png)
+![alt text](/assets/image-27.png)
 
 
 
